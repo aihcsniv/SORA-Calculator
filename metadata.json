@@ -1,0 +1,6 @@
+{
+  "name": "SORA Mortgage & Rate Calculator",
+  "description": "Calculate Singapore SORA-pegged mortgage loans, monthly installments, and amortization with live MAS interest rate data integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
