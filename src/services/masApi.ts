@@ -11,7 +11,7 @@ export interface MasApiConfig {
 
 export const DEFAULT_MAS_API_CONFIG: MasApiConfig = {
   endpointUrl: 'https://eservices.mas.gov.sg/apimg-gw/server/monthly_statistical_bulletin_non610mssql/domestic_interest_rates_daily/views/domestic_interest_rates_daily',
-  keyId: '77e13560-d485-446e-a1df-ae88dd7a02e7',
+  keyId: '', // NO hardcoded API key; user includes manually if needed
   useProxy: true,
   autoRefresh: true,
 };
@@ -65,14 +65,21 @@ export function saveMasConfig(config: MasApiConfig): void {
 }
 
 /**
- * Normalizes official MAS API Denodo and CKAN response formats into SORA records
+ * Normalizes official MAS API response formats into SORA records
  */
 function parseMasResponseData(data: any): { current: SoraRateRecord; history: SoraRateRecord[] } | null {
   if (!data) return null;
 
+  // Check if data already came normalized from /api/sora
+  if (data.rates && typeof data.rates.soraCompounded3M === 'number') {
+    return {
+      current: data.rates,
+      history: Array.isArray(data.historical) ? data.historical : [data.rates],
+    };
+  }
+
   let rawList: any[] = [];
 
-  // Official MAS Denodo API format: { name: 'domestic_interest_rates_daily', elements: [ ... ] }
   if (Array.isArray(data.elements)) {
     rawList = data.elements;
   } else if (data.result && Array.isArray(data.result.records)) {
@@ -92,18 +99,16 @@ function parseMasResponseData(data: any): { current: SoraRateRecord; history: So
   const validRecords: SoraRateRecord[] = [];
 
   for (const item of rawList) {
-    // SORA fields
     const rawSora = item.sora ?? item.sora_rate ?? item.daily_sora;
-    const rawC1m = item.comp_sora_1m ?? item.sora_compounded_1m ?? item.compounded_1m ?? item['1m_sora'];
-    const rawC3m = item.comp_sora_3m ?? item.sora_compounded_3m ?? item.compounded_3m ?? item['3m_sora'];
-    const rawC6m = item.comp_sora_6m ?? item.sora_compounded_6m ?? item.compounded_6m ?? item['6m_sora'];
+    const rawC1m = item.comp_sora_1m ?? item.sora_compounded_1m ?? item.compounded_1m;
+    const rawC3m = item.comp_sora_3m ?? item.sora_compounded_3m ?? item.compounded_3m;
+    const rawC6m = item.comp_sora_6m ?? item.sora_compounded_6m ?? item.compounded_6m;
 
     const sora = rawSora !== null && rawSora !== undefined ? parseFloat(String(rawSora)) : null;
     const soraCompounded1M = rawC1m !== null && rawC1m !== undefined ? parseFloat(String(rawC1m)) : null;
     const soraCompounded3M = rawC3m !== null && rawC3m !== undefined ? parseFloat(String(rawC3m)) : null;
     const soraCompounded6M = rawC6m !== null && rawC6m !== undefined ? parseFloat(String(rawC6m)) : null;
 
-    // Filter out uncompleted daily rows (where interest rates are null)
     if (sora === null && soraCompounded3M === null && soraCompounded1M === null) {
       continue;
     }
@@ -133,7 +138,6 @@ function parseMasResponseData(data: any): { current: SoraRateRecord; history: So
 
   if (validRecords.length === 0) return null;
 
-  // Sort descending by date so index 0 is the latest trading day
   validRecords.sort((a, b) => (a.date < b.date ? 1 : -1));
 
   return {
@@ -143,27 +147,32 @@ function parseMasResponseData(data: any): { current: SoraRateRecord; history: So
 }
 
 /**
- * Fetches SORA rates using the MAS API Key and endpoint provided by the user
+ * Fetches SORA rates via project /api/sora endpoint or direct URL
+ * NO API keys or KeyId are hardcoded in request headers.
  */
 export async function fetchMasSoraRates(customConfig?: MasApiConfig): Promise<MasApiResponse> {
   const config = customConfig || getSavedMasConfig();
-  
-  // Endpoints to attempt:
-  // 1. Local Vite proxy `/api/mas-sora?$orderby=end_of_day desc&$top=30` (avoids any browser CORS preflight issues)
-  // 2. Direct MAS API gateway with KeyId header
-  const proxyEndpoint = `/api/mas-sora?$orderby=end_of_day%20desc&$top=30`;
+
+  // Attempt local /api/sora handler first
+  const internalApiEndpoint = `/api/sora`;
   const directEndpoint = config.endpointUrl.includes('$orderby')
     ? config.endpointUrl
     : `${config.endpointUrl}${config.endpointUrl.includes('?') ? '&' : '?'}$orderby=end_of_day%20desc&$top=30`;
 
+  const directHeaders: Record<string, string> = {
+    'Accept': 'application/json',
+  };
+
+  // Only include KeyId if the user has manually provided it in their settings
+  if (config.keyId && config.keyId.trim()) {
+    directHeaders['KeyId'] = config.keyId.trim();
+  }
+
   const attempts: { url: string; headers: Record<string, string>; isProxy: boolean }[] = [
-    { url: proxyEndpoint, headers: { 'Accept': 'application/json' }, isProxy: true },
+    { url: internalApiEndpoint, headers: { 'Accept': 'application/json' }, isProxy: true },
     {
       url: directEndpoint,
-      headers: {
-        'Accept': 'application/json',
-        'KeyId': config.keyId,
-      },
+      headers: directHeaders,
       isProxy: false,
     },
   ];
@@ -197,7 +206,7 @@ export async function fetchMasSoraRates(customConfig?: MasApiConfig): Promise<Ma
         }
       }
     } catch (err: any) {
-      console.warn(`MAS API attempt (${attempt.url}) failed:`, err?.message || err);
+      console.warn(`SORA API attempt (${attempt.url}) note:`, err?.message || err);
     }
   }
 
@@ -209,6 +218,6 @@ export async function fetchMasSoraRates(customConfig?: MasApiConfig): Promise<Ma
     rates: VERIFIED_MAS_BENCHMARK_RATES,
     historical: VERIFIED_HISTORICAL_RATES,
     error: 'Using verified official MAS benchmark snapshot.',
-    apiUrlUsed: directEndpoint,
+    apiUrlUsed: internalApiEndpoint,
   };
 }

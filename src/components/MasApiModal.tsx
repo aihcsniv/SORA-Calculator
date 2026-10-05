@@ -118,14 +118,14 @@ export const MasApiModal: React.FC<MasApiModalProps> = ({
         {/* Content */}
         <div className="p-5 space-y-4 overflow-y-auto text-xs">
           {/* Status banner */}
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-emerald-950 space-y-1">
-            <div className="flex items-center gap-1.5 font-semibold text-emerald-900">
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-700 space-y-1">
+            <div className="flex items-center gap-1.5 font-semibold text-slate-900">
               <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Official MAS Credentials Configured</span>
+              <span>MAS SORA API Integration</span>
             </div>
-            <p className="text-[11px] text-emerald-800 leading-relaxed">
-              Integrated with MAS Monthly Statistical Bulletin (MSSQL/Denodo) daily domestic interest rates view.
-              Requires the official MAS <code className="bg-emerald-100/70 px-1 py-0.5 rounded font-mono">KeyId</code> header.
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              Integrated with the project-level <code className="bg-slate-200/70 px-1 py-0.5 rounded font-mono">/api/sora.js</code> service and MAS Daily Interest Rates view.
+              No API keys or KeyId are hardcoded; you can optionally supply your key manually below or in environment variables.
             </p>
           </div>
 
@@ -147,16 +147,17 @@ export const MasApiModal: React.FC<MasApiModalProps> = ({
           <div>
             <label className="text-slate-700 font-semibold flex items-center gap-1.5 mb-1">
               <Key className="w-3.5 h-3.5 text-slate-500" />
-              <span>MAS API KeyId (Required Header)</span>
+              <span>MAS API KeyId (Optional - Included Manually)</span>
             </label>
             <input
-              type="text"
+              type="password"
               value={config.keyId}
               onChange={(e) => setConfig({ ...config, keyId: e.target.value })}
+              placeholder="Leave empty or enter your KeyId manually"
               className="w-full px-3 py-2 border border-slate-300 rounded font-mono text-xs focus:outline-none focus:border-slate-900 text-slate-800"
             />
             <span className="text-[10px] text-slate-400 mt-1 block">
-              Sent as HTTP Header: <code className="bg-slate-100 px-1 py-0.5 rounded">KeyId: {config.keyId}</code>
+              {config.keyId ? `Included in request headers as KeyId` : `No KeyId header sent by default.`}
             </span>
           </div>
 

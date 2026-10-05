@@ -1,11 +1,47 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig, Plugin } from 'vite';
+
+// Plugin to serve /api/health and /api/sora directly from the root /api folder
+function apiEndpointsPlugin(): Plugin {
+  return {
+    name: 'api-endpoints',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const url = req.url || '';
+
+        if (url === '/api/health' || url.startsWith('/api/health?')) {
+          try {
+            const { default: healthHandler } = await import('./api/health.ts');
+            return healthHandler(req, res);
+          } catch (err: any) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ error: err?.message || 'Health check error' }));
+          }
+        }
+
+        if (url === '/api/sora' || url.startsWith('/api/sora?')) {
+          try {
+            const { default: soraHandler } = await import('./api/sora.js');
+            return soraHandler(req, res);
+          } catch (err: any) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ error: err?.message || 'SORA API error' }));
+          }
+        }
+
+        next();
+      });
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), apiEndpointsPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
@@ -17,28 +53,6 @@ export default defineConfig(() => {
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
-      proxy: {
-        '/api/mas-sora': {
-          target: 'https://eservices.mas.gov.sg',
-          changeOrigin: true,
-          secure: false,
-          rewrite: (p) => p.replace(/^\/api\/mas-sora/, '/apimg-gw/server/monthly_statistical_bulletin_non610mssql/domestic_interest_rates_daily/views/domestic_interest_rates_daily'),
-          headers: {
-            KeyId: '77e13560-d485-446e-a1df-ae88dd7a02e7',
-            Accept: 'application/json',
-          },
-        },
-        '/api/mas-exchange': {
-          target: 'https://eservices.mas.gov.sg',
-          changeOrigin: true,
-          secure: false,
-          rewrite: (p) => p.replace(/^\/api\/mas-exchange/, '/apimg-gw/server/monthly_statistical_bulletin_non610ora/exchange_rates_end_of_period_daily/views/exchange_rates_end_of_period_daily'),
-          headers: {
-            KeyId: '77e13560-d485-446e-a1df-ae88dd7a02e7',
-            Accept: 'application/json',
-          },
-        },
-      },
     },
   };
 });
