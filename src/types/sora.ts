@@ -2,11 +2,16 @@ export type SoraBenchmarkType = '3m_compounded' | '1m_compounded' | '6m_compound
 
 export interface SoraRateRecord {
   date: string; // YYYY-MM-DD
+  publishedDate?: string;
   sora: number; // Overnight rate %
   soraCompounded1M: number; // 1-month compounded %
   soraCompounded3M: number; // 3-month compounded %
   soraCompounded6M: number; // 6-month compounded %
   soraIndex?: number;
+  aggregateVolume?: number; // SGD millions
+  highestTransaction?: number; // %
+  lowestTransaction?: number; // %
+  calculationMethod?: string;
 }
 
 export interface MasApiResponse {

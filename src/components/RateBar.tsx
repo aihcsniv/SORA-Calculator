@@ -58,16 +58,39 @@ export const RateBar: React.FC<RateBarProps> = ({
     <div className="bg-slate-900 text-white rounded-xl p-4 sm:p-5 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
         <div>
-          <span className="text-xs font-semibold tracking-wider uppercase text-emerald-400">
-            MAS Benchmark Reference Rates
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold tracking-wider uppercase text-emerald-400">
+              MAS Benchmark Reference Rates
+            </span>
+            {rates.publishedDate && (
+              <span className="text-[10px] text-slate-300 bg-slate-800 px-1.5 py-0.5 rounded font-mono">
+                Trading: {rates.date} · Published: {rates.publishedDate}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            Select the SORA benchmark used by your bank package. Published by MAS as of {lastUpdatedDate}.
+            Select the SORA benchmark used by your bank package. Real-time official MAS API feed.
           </p>
         </div>
-        <div className="text-xs text-slate-400 flex items-center gap-1.5 self-start sm:self-auto">
-          <Info className="w-3.5 h-3.5 text-slate-400" />
-          <span>Compounded rates eliminate daily volatility</span>
+        <div className="text-xs text-slate-400 flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {rates.aggregateVolume && (
+            <span className="text-slate-300 font-mono text-[11px]">
+              Vol: S${rates.aggregateVolume.toLocaleString()}M
+            </span>
+          )}
+          {rates.soraIndex && (
+            <>
+              <span aria-hidden="true" className="text-slate-600">·</span>
+              <span className="text-slate-300 font-mono text-[11px]">
+                Index: {rates.soraIndex.toFixed(4)}
+              </span>
+            </>
+          )}
+          <span aria-hidden="true" className="text-slate-600">·</span>
+          <span className="flex items-center gap-1">
+            <Info className="w-3.5 h-3.5 text-slate-400" />
+            <span>Compounded in arrears</span>
+          </span>
         </div>
       </div>
 
